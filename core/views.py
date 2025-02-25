@@ -564,3 +564,5 @@ class InventoryViewSet(ModelViewSet):
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+    # generate predictions for fuels based on volume and tank capacity
