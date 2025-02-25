@@ -2,7 +2,7 @@ import io
 from datetime import datetime
 
 import pandas as pd
-from django.db.models import Sum
+from django.db.models import Sum, Count
 from django.http import FileResponse
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
@@ -472,3 +472,95 @@ class InventoryViewSet(ModelViewSet):
                 'error': str(e)
             }
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+    @restful_action(methods=['GET'], detail=False, url_path='generate-inventory-report')
+    def generate_inventory_report(self, request, *args, **kwargs):
+        try:
+            buffer = io.BytesIO()
+            doc = SimpleDocTemplate(buffer, pagesize=letter)
+            story = []
+            styles = getSampleStyleSheet()
+
+            # Title
+            title_style = ParagraphStyle(
+                'CustomTitle',
+                parent=styles['Heading1'],
+                fontSize=16,
+                spaceAfter=30
+            )
+            story.append(Paragraph('Inventory Summary Report', title_style))
+            story.append(Paragraph(f'Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', styles['Normal']))
+            story.append(Spacer(1, 20))
+
+            # Summary statistics by fuel type
+            story.append(Paragraph('Fuel Summary:', styles['Heading2']))
+            fuel_summary = (
+                Inventory.objects
+                .values('name')
+                .annotate(
+                    total_volume=Sum('volume'),
+                    count=Count('id')
+                )
+            )
+
+            summary_data = [['Fuel Type', 'Total Volume (L)', 'Count']]
+            for item in fuel_summary:
+                summary_data.append([
+                    item['name'].title(),
+                    f"{item['total_volume']:,}",
+                    str(item['count'])
+                ])
+
+            summary_table = Table(summary_data, colWidths=[150, 150, 100])
+            summary_table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('PADDING', (0, 0), (-1, -1), 6),
+                ('ALIGN', (1, 1), (2, -1), 'RIGHT'),
+            ]))
+            story.append(summary_table)
+            story.append(Spacer(1, 20))
+
+            # Detailed inventory table
+            story.append(Paragraph('Inventory Details:', styles['Heading2']))
+            inventories = Inventory.objects.select_related('tank').all()
+
+            table_data = [['Fuel Type', 'Tank', 'Volume (L)', 'Description', 'Date Added']]
+            for inv in inventories:
+                table_data.append([
+                    inv.name.title(),
+                    inv.tank.name if inv.tank else 'N/A',
+                    f"{inv.volume:,}",
+                    inv.description[:50] + '...' if len(inv.description) > 50 else inv.description,
+                    inv.created_at.strftime("%Y-%m-%d")
+                ])
+
+            inventory_table = Table(table_data, colWidths=[80, 80, 100, 160, 100])
+            inventory_table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('PADDING', (0, 0), (-1, -1), 6),
+                ('ALIGN', (2, 1), (2, -1), 'RIGHT'),
+            ]))
+            story.append(inventory_table)
+
+            doc.build(story)
+            buffer.seek(0)
+
+            return FileResponse(
+                buffer,
+                as_attachment=True,
+                filename=f'inventory_report_{datetime.now().strftime("%Y%m%d")}.pdf'
+            )
+
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
