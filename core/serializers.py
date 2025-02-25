@@ -13,7 +13,7 @@ class UserSerializer(serializers.ModelSerializer):
 class TankSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tank
-        fields = ['id', 'name', 'capacity', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'capacity', 'product', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 

@@ -6,6 +6,8 @@ from core.helper import hash_password, generate_tokens
 from core.models import User, Inventory, Tank
 from core.serializers import UserSerializer, InventorySerializer, TankSerializer
 from rest_framework.decorators import action as restful_action
+from rest_framework.exceptions import ValidationError
+import pandas as pd
 
 
 # Create your models here.
@@ -218,6 +220,60 @@ class TankViewSet(ModelViewSet):
         }
         return Response(response, status=status.HTTP_200_OK)
 
+    # upload csv with tanks
+
+    @restful_action(methods=['POST'], detail=False, url_path='upload-csv')
+    def upload_csv(self, request, *args, **kwargs):
+        try:
+            file = request.FILES['csv_file']
+
+            # Read CSV file using pandas
+            df = pd.read_csv(file)
+
+            # Validate required columns
+            required_columns = ['name', 'capacity', 'product']
+            if not all(col in df.columns for col in required_columns):
+                response = {
+                    'uploaded': False,
+                    'error': 'The CSV file must contain columns: name, capacity description'
+                }
+
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+            success_count = 0
+            errors = []
+
+            # Process each row
+            for index, row in df.iterrows():
+                try:
+
+                    # Create inventory item
+                    tank = Tank.objects.create(
+                        name=row['name'],
+                        product=row['product'],
+                        capacity=row['capacity']
+
+                    )
+                    success_count += 1
+
+                except Exception as e:
+                    errors.append(f"Row {index + 1}: {str(e)}")
+
+            response = {
+                'uploaded': True,
+                'success_count': success_count,
+                'total_rows': len(df),
+                'errors': errors
+            }
+            return Response(response, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            response = {
+                'uploaded': False,
+                'error': str(e)
+            }
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
 
 # inventory view set
 class InventoryViewSet(ModelViewSet):
@@ -240,3 +296,80 @@ class InventoryViewSet(ModelViewSet):
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
     # update
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            response = {
+                'updated': True,
+                'data': serializer.data
+            }
+            return Response(response, status=status.HTTP_200_OK)
+        else:
+            response = {
+                'updated': False,
+            }
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+    # delete
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.delete()
+        response = {
+            'deleted': True,
+        }
+        return Response(response, status=status.HTTP_200_OK)
+
+    @restful_action(methods=['POST'], detail=False, url_path='upload-csv')
+    def upload_csv(self, request, *args, **kwargs):
+        try:
+            file = request.FILES['csv_file']
+
+            # Read CSV file using pandas
+            df = pd.read_csv(file)
+
+            # Validate required columns
+            required_columns = ['name', 'volume', 'description']
+            if not all(col in df.columns for col in required_columns):
+                response = {
+                    'uploaded': False,
+                    'error': 'The CSV file must contain columns: name, volume, description'
+                }
+
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+            success_count = 0
+            errors = []
+
+            # Process each row
+            for index, row in df.iterrows():
+                try:
+
+                    # Create inventory item
+                    inventory = Inventory.objects.create(
+                        name=row['name'],
+
+                        volume=row['volume'],
+                        description=row.get('description', '')
+                    )
+                    success_count += 1
+
+                except Exception as e:
+                    errors.append(f"Row {index + 1}: {str(e)}")
+
+            response = {
+                'uploaded': True,
+                'success_count': success_count,
+                'total_rows': len(df),
+                'errors': errors
+            }
+            return Response(response, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            response = {
+                'uploaded': False,
+                'error': str(e)
+            }
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
