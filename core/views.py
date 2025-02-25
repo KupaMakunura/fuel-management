@@ -3,8 +3,8 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from core.helper import hash_password, generate_tokens
-from core.models import User
-from core.serializers import UserSerializer
+from core.models import User, Inventory, Tank
+from core.serializers import UserSerializer, InventorySerializer, TankSerializer
 from rest_framework.decorators import action as restful_action
 
 
@@ -168,3 +168,75 @@ class UserViewSet(ModelViewSet):
             }
 
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+
+# tank view set
+class TankViewSet(ModelViewSet):
+    queryset = Tank.objects.all()
+    serializer_class = TankSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            response = {
+                'created': True,
+                'data': serializer.data
+            }
+            return Response(response, status=status.HTTP_201_CREATED)
+        else:
+            response = {
+                'created': False,
+            }
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+    # update
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            response = {
+                'updated': True,
+                'data': serializer.data
+            }
+            return Response(response, status=status.HTTP_200_OK)
+        else:
+            response = {
+                'updated': False,
+            }
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+        # delete
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.delete()
+        response = {
+            'deleted': True,
+        }
+        return Response(response, status=status.HTTP_200_OK)
+
+
+# inventory view set
+class InventoryViewSet(ModelViewSet):
+    queryset = Inventory.objects.all()
+    serializer_class = InventorySerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            response = {
+                'created': True,
+                'data': serializer.data
+            }
+            return Response(response, status=status.HTTP_201_CREATED)
+        else:
+            response = {
+                'created': False,
+            }
+            return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+    # update
