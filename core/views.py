@@ -1,13 +1,21 @@
+import io
+from datetime import datetime
+
+import pandas as pd
+from django.db.models import Sum
+from django.http import FileResponse
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer
 from rest_framework import status
+from rest_framework.decorators import action as restful_action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from core.helper import hash_password, generate_tokens
 from core.models import User, Inventory, Tank
 from core.serializers import UserSerializer, InventorySerializer, TankSerializer
-from rest_framework.decorators import action as restful_action
-from rest_framework.exceptions import ValidationError
-import pandas as pd
 
 
 # Create your models here.
@@ -274,6 +282,95 @@ class TankViewSet(ModelViewSet):
             }
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
+    # tanks report
+    @restful_action(methods=['GET'], detail=False, url_path='generate-report')
+    def generate_report(self, request, *args, **kwargs):
+        try:
+            # Create buffer
+            buffer = io.BytesIO()
+
+            # Create PDF document
+            doc = SimpleDocTemplate(buffer, pagesize=letter)
+            story = []
+            styles = getSampleStyleSheet()
+
+            # Add title
+            title_style = ParagraphStyle(
+                'CustomTitle',
+                parent=styles['Heading1'],
+                fontSize=16,
+                spaceAfter=30
+            )
+            story.append(Paragraph('Tanks Summary Report', title_style))
+            story.append(Paragraph(f'Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', styles['Normal']))
+            story.append(Spacer(1, 20))
+
+            # Summary statistics
+            total_tanks = Tank.objects.count()
+            total_capacity = Tank.objects.aggregate(Sum('capacity'))['capacity__sum'] or 0
+
+            # Add summary
+            story.append(Paragraph('Summary Statistics:', styles['Heading2']))
+            summary_data = [
+                ['Total Tanks:', str(total_tanks)],
+                ['Total Capacity:', f"{total_capacity:,} liters"]
+            ]
+            summary_table = Table(summary_data, colWidths=[200, 200])
+            summary_table.setStyle(TableStyle([
+                ('FONTSIZE', (0, 0), (-1, -1), 12),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('PADDING', (0, 0), (-1, -1), 6),
+            ]))
+            story.append(summary_table)
+            story.append(Spacer(1, 20))
+
+            # Tanks table
+            story.append(Paragraph('Tank Details:', styles['Heading2']))
+            tanks = Tank.objects.all()
+
+            # Table headers
+            table_data = [['Name', 'Product', 'Capacity (L)', 'Created Date']]
+
+            # Add tank data
+            for tank in tanks:
+                table_data.append([
+                    tank.name,
+                    tank.product,
+                    f"{tank.capacity:,}",
+                    tank.created_at.strftime("%Y-%m-%d")
+                ])
+
+            # Create and style table
+            tanks_table = Table(table_data, colWidths=[120, 120, 120, 120])
+            tanks_table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('PADDING', (0, 0), (-1, -1), 6),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ]))
+            story.append(tanks_table)
+
+            # Build PDF
+            doc.build(story)
+            buffer.seek(0)
+
+            # Return PDF file
+            return FileResponse(
+                buffer,
+                as_attachment=True,
+                filename=f'tanks_report_{datetime.now().strftime("%Y%m%d")}.pdf'
+            )
+
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
 
 # inventory view set
 class InventoryViewSet(ModelViewSet):
@@ -321,6 +418,8 @@ class InventoryViewSet(ModelViewSet):
             'deleted': True,
         }
         return Response(response, status=status.HTTP_200_OK)
+
+    #
 
     @restful_action(methods=['POST'], detail=False, url_path='upload-csv')
     def upload_csv(self, request, *args, **kwargs):
