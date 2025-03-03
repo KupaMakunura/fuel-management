@@ -15,17 +15,19 @@ from rest_framework.viewsets import ModelViewSet
 
 from core.helper import hash_password, generate_tokens
 from core.models import User, Inventory, Tank
+from core.predictions import predict_price
 from core.serializers import UserSerializer, InventorySerializer, TankSerializer
 
 
 # Create your models here.
 
+
 class UserViewSet(ModelViewSet):
 
     def get_serializer_class(self):
-        if self.request.method == 'POST' and self.action == 'create':
+        if self.request.method == "POST" and self.action == "create":
             return UserSerializer
-        elif self.request.method == 'GET' and self.action == 'list':
+        elif self.request.method == "GET" and self.action == "list":
             return UserSerializer
 
     def get_queryset(self):
@@ -39,10 +41,10 @@ class UserViewSet(ModelViewSet):
         if serializer.is_valid():
             # hash the password
 
-            password = serializer.validated_data.get('password')
+            password = serializer.validated_data.get("password")
             hashed_password = hash_password(password)
 
-            serializer.validated_data.__setitem__('password', hashed_password)
+            serializer.validated_data.__setitem__("password", hashed_password)
             serializer.save()
 
             # create tokens
@@ -51,10 +53,10 @@ class UserViewSet(ModelViewSet):
             user_data = UserSerializer(serializer.instance).data
 
             response = {
-                'created': True,
-                'access_token': access_token,
-                'refresh_token': refresh_token,
-                'data': user_data
+                "created": True,
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "data": user_data,
             }
 
             return Response(response, status=status.HTTP_201_CREATED)
@@ -62,17 +64,17 @@ class UserViewSet(ModelViewSet):
         else:
 
             response = {
-                'created': False,
+                "created": False,
             }
 
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
     #     login the user
 
-    @restful_action(methods=['POST'], detail=False, url_path='login')
+    @restful_action(methods=["POST"], detail=False, url_path="login")
     def login(self, request, *args, **kwargs):
-        email = request.data.get('email')
-        password = request.data.get('password')
+        email = request.data.get("email")
+        password = request.data.get("password")
 
         try:
 
@@ -86,33 +88,31 @@ class UserViewSet(ModelViewSet):
                 user_data = UserSerializer(user).data
 
                 response = {
-                    'access_token': access_token,
-                    'refresh_token': refresh_token,
-                    'login': True,
-                    'data': user_data,
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                    "login": True,
+                    "data": user_data,
                 }
 
                 return Response(response, status=status.HTTP_200_OK)
             else:
 
                 response = {
-                    'password': False,
+                    "password": False,
                 }
 
                 return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
         except User.DoesNotExist:
-            response = {
-                'found': False
-            }
+            response = {"found": False}
 
             return Response(response, status=status.HTTP_404_NOT_FOUND)
 
     # send code for resetting password
-    @restful_action(methods=['POST'], detail=False, url_path='forgot-password')
+    @restful_action(methods=["POST"], detail=False, url_path="forgot-password")
     def forgot_password(self, *args, **kwargs):
         try:
-            email = self.request.data['email']
+            email = self.request.data["email"]
 
             user = User.objects.get(email=email)
 
@@ -121,34 +121,30 @@ class UserViewSet(ModelViewSet):
             user_data = UserSerializer(user, many=False).data
 
             response = {
-                'user': user_data,
-                'access_token': access_token,
-                'refresh_token': refresh_token,
-                'sent': True,
+                "user": user_data,
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "sent": True,
             }
 
             return Response(response, status=status.HTTP_200_OK)
 
         except User.DoesNotExist:
-            response = {
-                'found': False
-            }
+            response = {"found": False}
 
             return Response(response, status=status.HTTP_404_NOT_FOUND)
 
     # changing  password
-    @restful_action(methods=['POST'], detail=True, url_path='change-password')
+    @restful_action(methods=["POST"], detail=True, url_path="change-password")
     def change_password(self, *args, **kwargs):
-        old_password = self.request.data['old_password']
-        new_password = self.request.data['new_password']
+        old_password = self.request.data["old_password"]
+        new_password = self.request.data["new_password"]
 
         user = self.get_object()
 
         if user.check_password(old_password):
             if old_password == new_password:
-                response = {
-                    'repeat': True
-                }
+                response = {"repeat": True}
 
                 return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
@@ -163,19 +159,17 @@ class UserViewSet(ModelViewSet):
                 user_data = UserSerializer(user, many=False).data
 
                 response = {
-                    'user': user_data,
-                    'access_token': access_token,
-                    'refresh_token': refresh_token,
-                    'changed': True,
+                    "user": user_data,
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                    "changed": True,
                 }
 
                 return Response(response, status=status.HTTP_200_OK)
 
         # old password is wrong
         else:
-            response = {
-                'valid': False
-            }
+            response = {"valid": False}
 
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
@@ -189,14 +183,11 @@ class TankViewSet(ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            response = {
-                'created': True,
-                'data': serializer.data
-            }
+            response = {"created": True, "data": serializer.data}
             return Response(response, status=status.HTTP_201_CREATED)
         else:
             response = {
-                'created': False,
+                "created": False,
             }
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
@@ -207,14 +198,11 @@ class TankViewSet(ModelViewSet):
         serializer = self.get_serializer(instance, data=request.data)
         if serializer.is_valid():
             serializer.save()
-            response = {
-                'updated': True,
-                'data': serializer.data
-            }
+            response = {"updated": True, "data": serializer.data}
             return Response(response, status=status.HTTP_200_OK)
         else:
             response = {
-                'updated': False,
+                "updated": False,
             }
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
@@ -224,26 +212,26 @@ class TankViewSet(ModelViewSet):
         instance = self.get_object()
         instance.delete()
         response = {
-            'deleted': True,
+            "deleted": True,
         }
         return Response(response, status=status.HTTP_200_OK)
 
     # upload csv with tanks
 
-    @restful_action(methods=['POST'], detail=False, url_path='upload-csv')
+    @restful_action(methods=["POST"], detail=False, url_path="upload-csv")
     def upload_csv(self, request, *args, **kwargs):
         try:
-            file = request.FILES['csv_file']
+            file = request.FILES["csv_file"]
 
             # Read CSV file using pandas
             df = pd.read_csv(file)
 
             # Validate required columns
-            required_columns = ['name', 'capacity', 'product']
+            required_columns = ["name", "capacity", "product"]
             if not all(col in df.columns for col in required_columns):
                 response = {
-                    'uploaded': False,
-                    'error': 'The CSV file must contain columns: name, capacity description'
+                    "uploaded": False,
+                    "error": "The CSV file must contain columns: name, capacity description",
                 }
 
                 return Response(response, status=status.HTTP_400_BAD_REQUEST)
@@ -257,10 +245,9 @@ class TankViewSet(ModelViewSet):
 
                     # Create inventory item
                     tank = Tank.objects.create(
-                        name=row['name'],
-                        product=row['product'],
-                        capacity=row['capacity']
-
+                        name=row["name"],
+                        product=row["product"],
+                        capacity=row["capacity"],
                     )
                     success_count += 1
 
@@ -268,22 +255,19 @@ class TankViewSet(ModelViewSet):
                     errors.append(f"Row {index + 1}: {str(e)}")
 
             response = {
-                'uploaded': True,
-                'success_count': success_count,
-                'total_rows': len(df),
-                'errors': errors
+                "uploaded": True,
+                "success_count": success_count,
+                "total_rows": len(df),
+                "errors": errors,
             }
             return Response(response, status=status.HTTP_200_OK)
 
         except Exception as e:
-            response = {
-                'uploaded': False,
-                'error': str(e)
-            }
+            response = {"uploaded": False, "error": str(e)}
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
     # tanks report
-    @restful_action(methods=['GET'], detail=False, url_path='generate-report')
+    @restful_action(methods=["GET"], detail=False, url_path="generate-report")
     def generate_report(self, request, *args, **kwargs):
         try:
             # Create buffer
@@ -296,62 +280,76 @@ class TankViewSet(ModelViewSet):
 
             # Add title
             title_style = ParagraphStyle(
-                'CustomTitle',
-                parent=styles['Heading1'],
-                fontSize=16,
-                spaceAfter=30
+                "CustomTitle", parent=styles["Heading1"], fontSize=16, spaceAfter=30
             )
-            story.append(Paragraph('Tanks Summary Report', title_style))
-            story.append(Paragraph(f'Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', styles['Normal']))
+            story.append(Paragraph("Tanks Summary Report", title_style))
+            story.append(
+                Paragraph(
+                    f'Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}',
+                    styles["Normal"],
+                )
+            )
             story.append(Spacer(1, 20))
 
             # Summary statistics
             total_tanks = Tank.objects.count()
-            total_capacity = Tank.objects.aggregate(Sum('capacity'))['capacity__sum'] or 0
+            total_capacity = (
+                Tank.objects.aggregate(Sum("capacity"))["capacity__sum"] or 0
+            )
 
             # Add summary
-            story.append(Paragraph('Summary Statistics:', styles['Heading2']))
+            story.append(Paragraph("Summary Statistics:", styles["Heading2"]))
             summary_data = [
-                ['Total Tanks:', str(total_tanks)],
-                ['Total Capacity:', f"{total_capacity:,} liters"]
+                ["Total Tanks:", str(total_tanks)],
+                ["Total Capacity:", f"{total_capacity:,} liters"],
             ]
             summary_table = Table(summary_data, colWidths=[200, 200])
-            summary_table.setStyle(TableStyle([
-                ('FONTSIZE', (0, 0), (-1, -1), 12),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('PADDING', (0, 0), (-1, -1), 6),
-            ]))
+            summary_table.setStyle(
+                TableStyle(
+                    [
+                        ("FONTSIZE", (0, 0), (-1, -1), 12),
+                        ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                        ("PADDING", (0, 0), (-1, -1), 6),
+                    ]
+                )
+            )
             story.append(summary_table)
             story.append(Spacer(1, 20))
 
             # Tanks table
-            story.append(Paragraph('Tank Details:', styles['Heading2']))
+            story.append(Paragraph("Tank Details:", styles["Heading2"]))
             tanks = Tank.objects.all()
 
             # Table headers
-            table_data = [['Name', 'Product', 'Capacity (L)', 'Created Date']]
+            table_data = [["Name", "Product", "Capacity (L)", "Created Date"]]
 
             # Add tank data
             for tank in tanks:
-                table_data.append([
-                    tank.name,
-                    tank.product,
-                    f"{tank.capacity:,}",
-                    tank.created_at.strftime("%Y-%m-%d")
-                ])
+                table_data.append(
+                    [
+                        tank.name,
+                        tank.product,
+                        f"{tank.capacity:,}",
+                        tank.created_at.strftime("%Y-%m-%d"),
+                    ]
+                )
 
             # Create and style table
             tanks_table = Table(table_data, colWidths=[120, 120, 120, 120])
-            tanks_table.setStyle(TableStyle([
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-                ('FONTSIZE', (0, 0), (-1, -1), 10),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('PADDING', (0, 0), (-1, -1), 6),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ]))
+            tanks_table.setStyle(
+                TableStyle(
+                    [
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                        ("FONTSIZE", (0, 0), (-1, -1), 10),
+                        ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                        ("PADDING", (0, 0), (-1, -1), 6),
+                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ]
+                )
+            )
             story.append(tanks_table)
 
             # Build PDF
@@ -362,14 +360,11 @@ class TankViewSet(ModelViewSet):
             return FileResponse(
                 buffer,
                 as_attachment=True,
-                filename=f'tanks_report_{datetime.now().strftime("%Y%m%d")}.pdf'
+                filename=f'tanks_report_{datetime.now().strftime("%Y%m%d")}.pdf',
             )
 
         except Exception as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # inventory view set
@@ -381,14 +376,11 @@ class InventoryViewSet(ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            response = {
-                'created': True,
-                'data': serializer.data
-            }
+            response = {"created": True, "data": serializer.data}
             return Response(response, status=status.HTTP_201_CREATED)
         else:
             response = {
-                'created': False,
+                "created": False,
             }
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
@@ -399,14 +391,11 @@ class InventoryViewSet(ModelViewSet):
         serializer = self.get_serializer(instance, data=request.data)
         if serializer.is_valid():
             serializer.save()
-            response = {
-                'updated': True,
-                'data': serializer.data
-            }
+            response = {"updated": True, "data": serializer.data}
             return Response(response, status=status.HTTP_200_OK)
         else:
             response = {
-                'updated': False,
+                "updated": False,
             }
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
@@ -415,26 +404,26 @@ class InventoryViewSet(ModelViewSet):
         instance = self.get_object()
         instance.delete()
         response = {
-            'deleted': True,
+            "deleted": True,
         }
         return Response(response, status=status.HTTP_200_OK)
 
     #
 
-    @restful_action(methods=['POST'], detail=False, url_path='upload-csv')
+    @restful_action(methods=["POST"], detail=False, url_path="upload-csv")
     def upload_csv(self, request, *args, **kwargs):
         try:
-            file = request.FILES['csv_file']
+            file = request.FILES["csv_file"]
 
             # Read CSV file using pandas
             df = pd.read_csv(file)
 
             # Validate required columns
-            required_columns = ['name', 'volume', 'description']
+            required_columns = ["name", "volume", "description"]
             if not all(col in df.columns for col in required_columns):
                 response = {
-                    'uploaded': False,
-                    'error': 'The CSV file must contain columns: name, volume, description'
+                    "uploaded": False,
+                    "error": "The CSV file must contain columns: name, volume, description",
                 }
 
                 return Response(response, status=status.HTTP_400_BAD_REQUEST)
@@ -448,10 +437,9 @@ class InventoryViewSet(ModelViewSet):
 
                     # Create inventory item
                     inventory = Inventory.objects.create(
-                        name=row['name'],
-
-                        volume=row['volume'],
-                        description=row.get('description', '')
+                        name=row["name"],
+                        volume=row["volume"],
+                        description=row.get("description", ""),
                     )
                     success_count += 1
 
@@ -459,21 +447,18 @@ class InventoryViewSet(ModelViewSet):
                     errors.append(f"Row {index + 1}: {str(e)}")
 
             response = {
-                'uploaded': True,
-                'success_count': success_count,
-                'total_rows': len(df),
-                'errors': errors
+                "uploaded": True,
+                "success_count": success_count,
+                "total_rows": len(df),
+                "errors": errors,
             }
             return Response(response, status=status.HTTP_200_OK)
 
         except Exception as e:
-            response = {
-                'uploaded': False,
-                'error': str(e)
-            }
+            response = {"uploaded": False, "error": str(e)}
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
-    @restful_action(methods=['GET'], detail=False, url_path='generate-inventory-report')
+    @restful_action(methods=["GET"], detail=False, url_path="generate-inventory-report")
     def generate_inventory_report(self, request, *args, **kwargs):
         try:
             buffer = io.BytesIO()
@@ -483,71 +468,86 @@ class InventoryViewSet(ModelViewSet):
 
             # Title
             title_style = ParagraphStyle(
-                'CustomTitle',
-                parent=styles['Heading1'],
-                fontSize=16,
-                spaceAfter=30
+                "CustomTitle", parent=styles["Heading1"], fontSize=16, spaceAfter=30
             )
-            story.append(Paragraph('Inventory Summary Report', title_style))
-            story.append(Paragraph(f'Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', styles['Normal']))
+            story.append(Paragraph("Inventory Summary Report", title_style))
+            story.append(
+                Paragraph(
+                    f'Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}',
+                    styles["Normal"],
+                )
+            )
             story.append(Spacer(1, 20))
 
             # Summary statistics by fuel type
-            story.append(Paragraph('Fuel Summary:', styles['Heading2']))
-            fuel_summary = (
-                Inventory.objects
-                .values('name')
-                .annotate(
-                    total_volume=Sum('volume'),
-                    count=Count('id')
-                )
+            story.append(Paragraph("Fuel Summary:", styles["Heading2"]))
+            fuel_summary = Inventory.objects.values("name").annotate(
+                total_volume=Sum("volume"), count=Count("id")
             )
 
-            summary_data = [['Fuel Type', 'Total Volume (L)', 'Count']]
+            summary_data = [["Fuel Type", "Total Volume (L)", "Count"]]
             for item in fuel_summary:
-                summary_data.append([
-                    item['name'].title(),
-                    f"{item['total_volume']:,}",
-                    str(item['count'])
-                ])
+                summary_data.append(
+                    [
+                        item["name"].title(),
+                        f"{item['total_volume']:,}",
+                        str(item["count"]),
+                    ]
+                )
 
             summary_table = Table(summary_data, colWidths=[150, 150, 100])
-            summary_table.setStyle(TableStyle([
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 10),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('PADDING', (0, 0), (-1, -1), 6),
-                ('ALIGN', (1, 1), (2, -1), 'RIGHT'),
-            ]))
+            summary_table.setStyle(
+                TableStyle(
+                    [
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, -1), 10),
+                        ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                        ("PADDING", (0, 0), (-1, -1), 6),
+                        ("ALIGN", (1, 1), (2, -1), "RIGHT"),
+                    ]
+                )
+            )
             story.append(summary_table)
             story.append(Spacer(1, 20))
 
             # Detailed inventory table
-            story.append(Paragraph('Inventory Details:', styles['Heading2']))
-            inventories = Inventory.objects.select_related('tank').all()
+            story.append(Paragraph("Inventory Details:", styles["Heading2"]))
+            inventories = Inventory.objects.select_related("tank").all()
 
-            table_data = [['Fuel Type', 'Tank', 'Volume (L)', 'Description', 'Date Added']]
+            table_data = [
+                ["Fuel Type", "Tank", "Volume (L)", "Description", "Date Added"]
+            ]
             for inv in inventories:
-                table_data.append([
-                    inv.name.title(),
-                    inv.tank.name if inv.tank else 'N/A',
-                    f"{inv.volume:,}",
-                    inv.description[:50] + '...' if len(inv.description) > 50 else inv.description,
-                    inv.created_at.strftime("%Y-%m-%d")
-                ])
+                table_data.append(
+                    [
+                        inv.name.title(),
+                        inv.tank.name if inv.tank else "N/A",
+                        f"{inv.volume:,}",
+                        (
+                            inv.description[:50] + "..."
+                            if len(inv.description) > 50
+                            else inv.description
+                        ),
+                        inv.created_at.strftime("%Y-%m-%d"),
+                    ]
+                )
 
             inventory_table = Table(table_data, colWidths=[80, 80, 100, 160, 100])
-            inventory_table.setStyle(TableStyle([
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 10),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('PADDING', (0, 0), (-1, -1), 6),
-                ('ALIGN', (2, 1), (2, -1), 'RIGHT'),
-            ]))
+            inventory_table.setStyle(
+                TableStyle(
+                    [
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, -1), 10),
+                        ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                        ("PADDING", (0, 0), (-1, -1), 6),
+                        ("ALIGN", (2, 1), (2, -1), "RIGHT"),
+                    ]
+                )
+            )
             story.append(inventory_table)
 
             doc.build(story)
@@ -556,13 +556,37 @@ class InventoryViewSet(ModelViewSet):
             return FileResponse(
                 buffer,
                 as_attachment=True,
-                filename=f'inventory_report_{datetime.now().strftime("%Y%m%d")}.pdf'
+                filename=f'inventory_report_{datetime.now().strftime("%Y%m%d")}.pdf',
             )
 
         except Exception as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     # generate predictions for fuels based on volume and tank capacity
+    @restful_action(methods=["POST"], detail=False, url_path="get-predictions")
+    def get_predictions(request):
+        if request.method == "POST":
+            product = request.data["product"]
+            date = request.data["date"]
+
+            # fetch the current inventory
+
+            inventory = Inventory.objects.filter(name=product)
+
+            inventory_data = [item for item in inventory]
+
+            # call the predict price function
+
+            price = predict_price(product, date, inventory_data)
+
+            if price:
+
+                response = {"predicted_price": price, "product": product, "date": date}
+
+                return Response(response, status=status.HTTP_200_OK)
+
+            else:
+
+                response = {"predictions": False}
+
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
