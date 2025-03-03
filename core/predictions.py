@@ -4,7 +4,7 @@ import pandas as pd
 
 def predict_price(product, date):
 
-    data = pd.read_csv("datasets/ethanol.csv")
+    data = pd.read_csv(f"datasets/{product}.csv")
     # Load the saved model
     model = joblib.load(f"models/{product}_price_model.joblib")
 
