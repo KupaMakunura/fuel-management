@@ -564,10 +564,11 @@ class InventoryViewSet(ModelViewSet):
 
     # generate predictions for fuels based on volume and tank capacity
     @restful_action(methods=["POST"], detail=False, url_path="get-predictions")
-    def get_predictions(request):
+    def get_predictions(self, request, *args, **kwargs):
         if request.method == "POST":
             product = request.data["product"]
             date = request.data["date"]
+            formatted_date = pd.to_datetime(date)
 
             # fetch the current inventory
 
@@ -577,7 +578,7 @@ class InventoryViewSet(ModelViewSet):
 
             # call the predict price function
 
-            price = predict_price(product, date, inventory_data)
+            price = predict_price(product, formatted_date)
 
             if price:
 

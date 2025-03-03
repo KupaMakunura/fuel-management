@@ -2,9 +2,14 @@ import joblib
 import pandas as pd
 
 
-def predict_price(product, date, data):
+def predict_price(product, date):
+
+    data = pd.read_csv("datasets/ethanol.csv")
     # Load the saved model
-    model = joblib.load(f"../models/{product}_price_model.joblib")
+    model = joblib.load(f"models/{product}_price_model.joblib")
+
+    # convert the date to a datetime object
+    data["created_at"] = pd.to_datetime(data["created_at"])
 
     # Prepare input data for the selected date
     input_data = pd.DataFrame({"created_at": [date]})
