@@ -1,7 +1,7 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { signIn } from "next-auth/react";
+import { API } from "@/services";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -30,22 +30,12 @@ export default function LoginPage() {
     }
 
     try {
-      const response = await signIn("credentials", {
+      const response = await API.post("/users/login/", {
         email: email,
         password: password,
-        redirect: false,
       });
 
-      if (response?.status === 401) {
-        toast({
-          title: "Authentication Error",
-          description: "Wrong details please check and try again",
-          variant: "destructive",
-          className: "bg-red-500 text-white",
-        });
-      }
-
-      if (response?.status === 200) {
+      if (response.status === 200) {
         toast({
           title: "Authentication Successful",
           description: "Welcome to the Fuel Management System",
@@ -53,15 +43,27 @@ export default function LoginPage() {
           className: "bg-green-500 text-white",
         });
 
-        router.replace("/otp");
+        const user = response.data.data;
+        localStorage.setItem("email", user.email);
+
+        router.replace("/two-factor-auth");
       }
     } catch (error: any) {
-      toast({
-        title: "Server Error",
-        description: "Internal Server Error please try again",
-        variant: "destructive",
-        className: "bg-red-500 text-white",
-      });
+      if (error.response?.status === 401) {
+        toast({
+          title: "Authentication Error",
+          description: "Wrong details please check and try again",
+          variant: "destructive",
+          className: "bg-red-500 text-white",
+        });
+      } else {
+        toast({
+          title: "Server Error",
+          description: "Internal Server Error please try again",
+          variant: "destructive",
+          className: "bg-red-500 text-white",
+        });
+      }
     } finally {
       setIsLoading(false);
     }

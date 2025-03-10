@@ -54,7 +54,7 @@ export default function SignupPage() {
     }
 
     try {
-      const response = await API.post("/auth/signup", {
+      const response = await API.post("/users/", {
         email,
         password,
       });
@@ -66,7 +66,12 @@ export default function SignupPage() {
           variant: "default",
           className: "bg-green-500 text-white",
         });
-        router.replace("/login");
+
+        const user = response.data.data;
+
+        localStorage.setItem("email", user.email);
+
+        router.replace("/two-factor-auth");
       }
     } catch (error: any) {
       const status = error.response?.status;
@@ -79,6 +84,7 @@ export default function SignupPage() {
           className: "bg-red-500 text-white",
         });
       } else {
+        console.log(error);
         toast({
           title: "Error",
           description: "Something went wrong",

@@ -8,7 +8,7 @@ export async function middleware(req: NextRequest) {
     req.cookies.get("next-auth.session-token") ||
     req.cookies.get("__Secure-next-auth.session-token"); // For HTTPS
 
-  const safeRoutes = ["/", "/forgot-password", "/signup"]; // Define safe routes accessible to unauthenticated users
+  const safeRoutes = ["/", "/forgot-password", "/signup", "/two-factor-auth"]; // Define safe routes accessible to unauthenticated users
   const isSafeRoute = safeRoutes.includes(req.nextUrl.pathname);
 
   // CORS handling

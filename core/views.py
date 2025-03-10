@@ -13,8 +13,8 @@ from rest_framework.decorators import action as restful_action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from core.helper import hash_password, generate_tokens
-from core.models import User, Inventory, Tank
+from core.helper import hash_password, generate_tokens, send_verification_code
+from core.models import User, Inventory, Tank, UserTwoFactor
 from core.predictions import predict_price
 from core.serializers import UserSerializer, InventorySerializer, TankSerializer
 
@@ -46,6 +46,17 @@ class UserViewSet(ModelViewSet):
 
             serializer.validated_data.__setitem__("password", hashed_password)
             serializer.save()
+
+            # send verification code
+
+            verification_code = send_verification_code(request.data["email"])
+
+            if verification_code is None:
+                response = {
+                    "sent": False,
+                }
+
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
             # create tokens
             access_token, refresh_token = generate_tokens(serializer.instance)
@@ -83,6 +94,9 @@ class UserViewSet(ModelViewSet):
             if user.check_password(password):
                 access_token, refresh_token = generate_tokens(user)
 
+                # send the email verification code
+                verification_code = send_verification_code(email)
+
                 # return user data
 
                 user_data = UserSerializer(user).data
@@ -104,9 +118,11 @@ class UserViewSet(ModelViewSet):
                 return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
         except User.DoesNotExist:
-            response = {"found": False}
+            response = {
+                "found": False,
+            }
 
-            return Response(response, status=status.HTTP_404_NOT_FOUND)
+            return Response(response, status=status.HTTP_401_UNAUTHORIZED)
 
     # send code for resetting password
     @restful_action(methods=["POST"], detail=False, url_path="forgot-password")
@@ -132,6 +148,37 @@ class UserViewSet(ModelViewSet):
         except User.DoesNotExist:
             response = {"found": False}
 
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
+
+    @restful_action(methods=["POST"], detail=False, url_path="two-factor-auth")
+    def two_factor_auth(self, *args, **kwargs):
+        try:
+            email = self.request.data["email"]
+            code = self.request.data["code"]
+            user = User.objects.get(email=email)
+            verification_code = UserTwoFactor.objects.get(
+                user=user, verification_code=code
+            )
+            if verification_code:
+                verification_code.delete()
+                access_token, refresh_token = generate_tokens(user)
+                user_data = UserSerializer(user, many=False).data
+                response = {
+                    "user": user_data,
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                    "sent": True,
+                }
+                return Response(response, status=status.HTTP_200_OK)
+            else:
+                response = {
+                    "valid": False,
+                }
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:
+            response = {
+                "found": False,
+            }
             return Response(response, status=status.HTTP_404_NOT_FOUND)
 
     # changing  password

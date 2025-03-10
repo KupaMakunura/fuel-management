@@ -7,18 +7,16 @@ const handler = NextAuth({
     Credentials({
       name: "Credentials",
       credentials: {
+        code: { type: "text" },
         email: { type: "text" },
-        password: { type: "text" },
-        phone_number: { type: "text" },
       },
       //   authorize function
       async authorize(credentials) {
         try {
           // call the backend api
-          const response = await API.post("/login", {
+          const response = await API.post("/users/two-factor-auth/", {
+            code: credentials?.code,
             email: credentials?.email,
-            password: credentials?.password,
-            phone_number: credentials?.password,
           });
 
           return response.data as any;
@@ -47,7 +45,7 @@ const handler = NextAuth({
 
   pages: {
     signIn: "/",
-    newUser: "/sign-up",
+    newUser: "/signup",
   },
 });
 
