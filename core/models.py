@@ -7,6 +7,10 @@ PRODUCT_CHOICES = (
     ("diesel", "Diesel"),
     ("ethanol", "Ethanol"),
 )
+REPORT_TYPE_CHOICES = (
+    ("inventory", "Inventory"),
+    ("tanks", "Tanks"),
+)
 
 
 class User(AbstractUser):
@@ -44,5 +48,13 @@ class Inventory(models.Model):
     tank = models.ForeignKey(Tank, on_delete=models.CASCADE, null=True)
     volume = models.IntegerField()
     description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class Report(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    file_url = models.URLField()
+    report_type = models.CharField(max_length=255, choices=REPORT_TYPE_CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

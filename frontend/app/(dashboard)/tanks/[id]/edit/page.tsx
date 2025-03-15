@@ -13,54 +13,68 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { API } from "@/services";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 
-export default function NewInventoryPage() {
-  const [name, setName] = useState<string | null>(null);
-  const [volume, setVolume] = useState<any>(null);
-  const [description, setDescription] = useState<string>("");
-  const [tank, setTank] = useState<string | null>(null);
-  const [tanks, setTanks] = useState<any[]>([]);
+export default function EditTankPage() {
+  const params = useParams();
+  const [name, setName] = useState<string>("");
+  const [product, setProduct] = useState<string>("");
+  const [capacity, setCapacity] = useState<string>("");
 
   useEffect(() => {
-    const fetchTanks = async () => {
+    const fetchTankDetails = async () => {
       try {
-        const response = await API.get("/tanks/");
-        setTanks(response.data);
-      } catch (error) {
+        const response = await API.get(`/tanks/${params.id}/`);
+        if (response.status === 200) {
+          const tankData = response.data;
+          setName(tankData.name);
+          setProduct(tankData.product);
+          setCapacity(tankData.capacity);
+        }
+      } catch (error: any) {
         toast({
-          title: "Error",
-          description: "Failed to fetch tanks",
+          title: "Error Fetching Tank",
+          description: "Could not load tank details",
           variant: "destructive",
           className: "bg-red-500 text-white",
         });
       }
     };
 
-    fetchTanks();
-  }, []);
+    if (params.id) {
+      fetchTankDetails();
+    }
+  }, [params.id]);
 
-  const handleCreateInventory = async () => {
-    if (!volume || !name) {
+  const handleUpdateTank = async () => {
+    if (!capacity || !product || !name) {
       toast({
         title: "Missing Details",
-        description: "Please enter all required details to continue",
+        description: "Please enter all details to continue",
         variant: "destructive",
         className: "bg-red-500 text-white",
       });
     } else {
       try {
-        const response = await API.post("/inventory/", {
-          name,
-          volume,
-          description,
-          tank,
-        });
+        const response = await API.put(
+          `/tanks/${params.id}/`,
+          {
+            name,
+            product,
+            capacity,
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
-        if (response.data.created) {
+        if (response.status === 200) {
           toast({
-            title: "Inventory Creation Successful",
-            description: "The inventory item was successfully created",
+            title: "Tank Update Successful",
+            description: "The tank was successfully updated",
             variant: "default",
             className: "bg-green-500 text-white",
           });
@@ -80,7 +94,7 @@ export default function NewInventoryPage() {
             variant: "destructive",
             className: "bg-red-500 text-white",
           });
-        } else if (error.status) {
+        } else {
           toast({
             title: "Client error",
             description: "Unexpected error please try again",
@@ -94,13 +108,13 @@ export default function NewInventoryPage() {
 
   return (
     <div className="space-y-4">
-      <CardTitle className="text-2xl">New Inventory</CardTitle>
+      <CardTitle className="text-2xl">Edit Tank</CardTitle>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="name">Product</Label>
-          <Select onValueChange={(value) => setName(value)}>
-            <SelectTrigger id="name">
+          <Label htmlFor="product">Product</Label>
+          <Select value={product} onValueChange={(value) => setProduct(value)}>
+            <SelectTrigger id="product">
               <SelectValue placeholder="Select product" />
             </SelectTrigger>
             <SelectContent>
@@ -110,50 +124,34 @@ export default function NewInventoryPage() {
             </SelectContent>
           </Select>
         </div>
-
         <div className="space-y-2">
-          <Label htmlFor="volume">Volume</Label>
+          <Label htmlFor="name">Tank Name</Label>
           <Input
-            id="volume"
-            type="number"
-            step="0.01"
-            onChange={(event) => setVolume(event.target.value as any)}
-            placeholder="Enter Volume"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="description">Description</Label>
-          <Input
-            id="description"
+            id="name"
             type="text"
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder="Enter Description"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Enter tank name"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="tank">Tank (Optional)</Label>
-          <Select onValueChange={(value) => setTank(value)}>
-            <SelectTrigger id="tank">
-              <SelectValue placeholder="Select tank" />
-            </SelectTrigger>
-            <SelectContent>
-              {tanks.map((tank) => (
-                <SelectItem key={tank.id} value={tank.id}>
-                  {tank.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label htmlFor="capacity">Capacity</Label>
+          <Input
+            id="capacity"
+            type="number"
+            value={capacity}
+            onChange={(event) => setCapacity(event.target.value)}
+            placeholder="Enter capacity in liters"
+          />
         </div>
       </div>
 
       <Button
-        onClick={() => handleCreateInventory()}
+        onClick={handleUpdateTank}
         className="bg-primary hover:bg-primary/90"
       >
-        Save Inventory
+        Update Tank
       </Button>
     </div>
   );

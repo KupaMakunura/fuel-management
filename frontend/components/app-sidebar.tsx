@@ -30,7 +30,9 @@ export function AppSidebar() {
   return (
     <Sidebar className="">
       <SidebarHeader>
-        <h2 className="text-lg font-semibold px-4 py-2">NOIC</h2>
+        <h2 className="text-lg font-semibold px-4 py-2">
+          National Fuel Management System
+        </h2>
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu className="px-5">

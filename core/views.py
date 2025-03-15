@@ -1,9 +1,11 @@
 import io
 from datetime import datetime
+import os
 
 import pandas as pd
 from django.db.models import Sum, Count
 from django.http import FileResponse
+from django.conf import settings
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -15,9 +17,14 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import AllowAny
 
 from core.helper import hash_password, generate_tokens, send_verification_code
-from core.models import User, Inventory, Tank, UserTwoFactor
+from core.models import Report, User, Inventory, Tank, UserTwoFactor
 from core.predictions import predict_price
-from core.serializers import UserSerializer, InventorySerializer, TankSerializer
+from core.serializers import (
+    ReportSerializer,
+    UserSerializer,
+    InventorySerializer,
+    TankSerializer,
+)
 
 
 # Create your models here.
@@ -224,7 +231,7 @@ class UserViewSet(ModelViewSet):
 
 # tank view set
 class TankViewSet(ModelViewSet):
-    queryset = Tank.objects.all()
+    queryset = Tank.objects.all().order_by("id")
     serializer_class = TankSerializer
     permission_classes = [AllowAny]
 
@@ -293,7 +300,7 @@ class TankViewSet(ModelViewSet):
                 try:
 
                     # Create inventory item
-                    tank = Tank.objects.create(
+                    Tank.objects.create(
                         name=row["name"],
                         product=row["product"],
                         capacity=row["capacity"],
@@ -316,8 +323,8 @@ class TankViewSet(ModelViewSet):
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
     # tanks report
-    @restful_action(methods=["GET"], detail=False, url_path="generate-report")
-    def generate_report(self, request, *args, **kwargs):
+    @restful_action(methods=["GET"], detail=False, url_path="generate-tanks-report")
+    def generate_tanks_report(self, request, *args, **kwargs):
         try:
             # Create buffer
             buffer = io.BytesIO()
@@ -401,15 +408,38 @@ class TankViewSet(ModelViewSet):
             )
             story.append(tanks_table)
 
-            # Build PDF
             doc.build(story)
             buffer.seek(0)
 
-            # Return PDF file
-            return FileResponse(
-                buffer,
-                as_attachment=True,
-                filename=f'tanks_report_{datetime.now().strftime("%Y%m%d")}.pdf',
+            # Create a unique filename with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"tanks_report_{timestamp}.pdf"
+
+            # Ensure the reports directory exists
+            reports_dir = os.path.join(settings.BASE_DIR, "cdn", "reports")
+            os.makedirs(reports_dir, exist_ok=True)
+
+            # Full file path
+            file_path = os.path.join(reports_dir, filename)
+
+            # Save the PDF to file
+            with open(file_path, "wb") as f:
+                f.write(buffer.getvalue())
+
+            # Construct the file URL
+            file_url = f"/cdn/reports/{filename}"
+            absolute_url = request.build_absolute_uri(file_url)
+
+            # Create and save the report
+            Report.objects.create(file_url=absolute_url, report_type="tanks")
+
+            return Response(
+                {
+                    "success": True,
+                    "file_url": absolute_url,
+                    "filename": filename,
+                },
+                status=status.HTTP_200_OK,
             )
 
         except Exception as e:
@@ -418,7 +448,7 @@ class TankViewSet(ModelViewSet):
 
 # inventory view set
 class InventoryViewSet(ModelViewSet):
-    queryset = Inventory.objects.all()
+    queryset = Inventory.objects.all().order_by("-created_at")
     serializer_class = InventorySerializer
 
     def create(self, request, *args, **kwargs):
@@ -528,39 +558,6 @@ class InventoryViewSet(ModelViewSet):
             )
             story.append(Spacer(1, 20))
 
-            # Summary statistics by fuel type
-            story.append(Paragraph("Fuel Summary:", styles["Heading2"]))
-            fuel_summary = Inventory.objects.values("name").annotate(
-                total_volume=Sum("volume"), count=Count("id")
-            )
-
-            summary_data = [["Fuel Type", "Total Volume (L)", "Count"]]
-            for item in fuel_summary:
-                summary_data.append(
-                    [
-                        item["name"].title(),
-                        f"{item['total_volume']:,}",
-                        str(item["count"]),
-                    ]
-                )
-
-            summary_table = Table(summary_data, colWidths=[150, 150, 100])
-            summary_table.setStyle(
-                TableStyle(
-                    [
-                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                        ("FONTSIZE", (0, 0), (-1, -1), 10),
-                        ("GRID", (0, 0), (-1, -1), 1, colors.black),
-                        ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                        ("PADDING", (0, 0), (-1, -1), 6),
-                        ("ALIGN", (1, 1), (2, -1), "RIGHT"),
-                    ]
-                )
-            )
-            story.append(summary_table)
-            story.append(Spacer(1, 20))
-
             # Detailed inventory table
             story.append(Paragraph("Inventory Details:", styles["Heading2"]))
             inventories = Inventory.objects.select_related("tank").all()
@@ -602,14 +599,43 @@ class InventoryViewSet(ModelViewSet):
             doc.build(story)
             buffer.seek(0)
 
-            return FileResponse(
-                buffer,
-                as_attachment=True,
-                filename=f'inventory_report_{datetime.now().strftime("%Y%m%d")}.pdf',
+            # Create a unique filename with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"inventory_report_{timestamp}.pdf"
+
+            # Ensure the reports directory exists
+            reports_dir = os.path.join(settings.BASE_DIR, "cdn", "reports")
+            os.makedirs(reports_dir, exist_ok=True)
+
+            # Full file path
+            file_path = os.path.join(reports_dir, filename)
+
+            # Save the PDF to file
+            with open(file_path, "wb") as f:
+                f.write(buffer.getvalue())
+            # Construct the file URL
+            file_url = f"/cdn/reports/{filename}"
+            absolute_url = request.build_absolute_uri(file_url)
+
+            # Create and save the report
+            Report.objects.create(file_url=absolute_url, report_type="inventory")
+
+            return Response(
+                {
+                    "success": True,
+                    "file_url": absolute_url,
+                    "filename": filename,
+                },
+                status=status.HTTP_200_OK,
             )
 
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    "error": str(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     # generate predictions for fuels based on volume and tank capacity
     @restful_action(methods=["POST"], detail=False, url_path="get-predictions")
@@ -622,10 +648,6 @@ class InventoryViewSet(ModelViewSet):
             # fetch the current inventory
 
             inventory = Inventory.objects.filter(name=product)
-
-            inventory_data = [item for item in inventory]
-
-            # call the predict price function
 
             price = predict_price(product, formatted_date)
 
@@ -640,3 +662,8 @@ class InventoryViewSet(ModelViewSet):
                 response = {"predictions": False}
 
                 return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ReportViewSet(ModelViewSet):
+    queryset = Report.objects.all().order_by("-created_at")
+    serializer_class = ReportSerializer

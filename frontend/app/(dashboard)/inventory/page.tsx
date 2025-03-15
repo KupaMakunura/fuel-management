@@ -1,11 +1,13 @@
 "use client";
-import React, { useState } from "react";
-import { useEffect } from "react";
-import { API } from "@/services";
-import { useSession } from "next-auth/react";
-import Link from "next/link";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -14,30 +16,53 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Pencil, Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { API } from "@/services";
+import { Loader2, Pencil, Plus, FileText } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 const InventoryPage = () => {
-  const { data: session } = useSession();
   const [inventory, setInventory] = useState<any[]>();
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [generatingReport, setGeneratingReport] = useState(false);
+
   // call the api
   const fetchInventory = async () => {
-    const response = await API.get("/inventory", {
-      headers: {
-        Authorization: `Bearer ${session?.user.access_token}`,
-      },
-    });
+    try {
+      const response = await API.get("/inventory");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  };
 
-    return response.data;
+  const generateReport = async () => {
+    try {
+      setGeneratingReport(true);
+      const response = await API.get("/inventory/generate-inventory-report/");
+
+      if (response.data.file_url) {
+        window.open(response.data.file_url, "_blank");
+      }
+
+      setGeneratingReport(false);
+      toast({
+        title: "Report Generated Successfully",
+        description: "The report has been generated and opened in a new tab.",
+        variant: "default",
+        className: "bg-green-500 text-white",
+      });
+    } catch (error) {
+      setGeneratingReport(false);
+      toast({
+        title: "Report Generation Failed",
+        description: "Error while generating report, please try again",
+        variant: "destructive",
+        className: "bg-red-500 text-white",
+      });
+    }
   };
 
   useEffect(() => {
@@ -55,7 +80,7 @@ const InventoryPage = () => {
           className: "bg-red-500 text-white",
         });
       });
-  }, [toast]);
+  }, []);
 
   return (
     <Card className="w-full">
@@ -87,11 +112,25 @@ const InventoryPage = () => {
               />
             </svg>
           </div>
-          <Link href="/inventory/new">
-            <Button className="bg-primary hover:bg-primary/90">
-              <Plus className="mr-2 h-4 w-4" /> Add Inventory
+          <div className="flex gap-2">
+            <Button
+              onClick={() => generateReport()}
+              disabled={generatingReport}
+              className="bg-black"
+            >
+              {generatingReport ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FileText className="mr-2 h-4 w-4" />
+              )}
+              Generate Report
             </Button>
-          </Link>
+            <Link href="/inventory/new">
+              <Button className="bg-primary hover:bg-primary/90">
+                <Plus className="mr-2 h-4 w-4" /> Add Inventory
+              </Button>
+            </Link>
+          </div>
         </div>
         {loading ? (
           <div className="flex justify-center items-center h-64">
@@ -103,25 +142,31 @@ const InventoryPage = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[50px]">No</TableHead>
-
-                  <TableHead>Product</TableHead>
-                  <TableHead>Measured Depth</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Tank</TableHead>
+                  <TableHead>Volume</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Created At</TableHead>
                   <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {inventory?.map((row, i) => (
-                  <TableRow key={i}>
-                    <TableCell>{i}</TableCell>
-                    <TableCell>{row.product}</TableCell>
-                    <TableCell>{row.quantity}</TableCell>
-                    <TableCell>{row.date}</TableCell>
-
+                  <TableRow key={row.id}>
+                    <TableCell>{i + 1}</TableCell>
+                    <TableCell>{row.name}</TableCell>
+                    <TableCell>{row.tank?.name ?? "No Tank"}</TableCell>
+                    <TableCell>{row.volume}</TableCell>
+                    <TableCell>{row.description}</TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Pencil className="h-4 w-4 text-gray-500" />
-                      </Button>
+                      {new Date(row.created_at).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <Link href={`/inventory/${row.id}`}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Pencil className="h-4 w-4 text-gray-500" />
+                        </Button>
+                      </Link>
                     </TableCell>
                   </TableRow>
                 ))}
