@@ -28,8 +28,9 @@ interface Tank {
   id: string;
   name: string;
   product: string;
-  depth_measured: number;
-  date: string;
+  capacity: number;
+  created_at: string;
+  updated_at: string;
 }
 
 const TankPage = () => {
@@ -40,11 +41,7 @@ const TankPage = () => {
 
   const fetchTanks = async () => {
     try {
-      const response = await API.get("/inventory", {
-        headers: {
-          Authorization: `Bearer ${session?.user.access_token}`,
-        },
-      });
+      const response = await API.get("/tanks");
       return response.data;
     } catch (error) {
       throw new Error("Failed to fetch tanks");
@@ -65,7 +62,7 @@ const TankPage = () => {
           variant: "destructive",
         });
       });
-  }, [toast]);
+  }, []);
 
   const filteredTanks = tanks.filter((tank) =>
     tank.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -119,8 +116,8 @@ const TankPage = () => {
                   <TableHead className="w-[50px]">No</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Product</TableHead>
-                  <TableHead>Measured Depth</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead>Capacity</TableHead>
+                  <TableHead>Created At</TableHead>
                   <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -130,8 +127,10 @@ const TankPage = () => {
                     <TableCell>{i + 1}</TableCell>
                     <TableCell className="font-medium">{tank.name}</TableCell>
                     <TableCell>{tank.product}</TableCell>
-                    <TableCell>{tank.depth_measured.toFixed(2)} m</TableCell>
-                    <TableCell>{tank.date}</TableCell>
+                    <TableCell>{tank.capacity} L</TableCell>
+                    <TableCell>
+                      {new Date(tank.created_at).toLocaleDateString()}
+                    </TableCell>
                     <TableCell>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
                         <Pencil className="h-4 w-4" />

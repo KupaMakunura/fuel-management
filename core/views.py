@@ -12,6 +12,7 @@ from rest_framework import status
 from rest_framework.decorators import action as restful_action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.permissions import AllowAny
 
 from core.helper import hash_password, generate_tokens, send_verification_code
 from core.models import User, Inventory, Tank, UserTwoFactor
@@ -225,6 +226,7 @@ class UserViewSet(ModelViewSet):
 class TankViewSet(ModelViewSet):
     queryset = Tank.objects.all()
     serializer_class = TankSerializer
+    permission_classes = [AllowAny]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

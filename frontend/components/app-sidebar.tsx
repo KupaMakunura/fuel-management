@@ -1,3 +1,4 @@
+"use client";
 import {
   Sidebar,
   SidebarContent,
@@ -17,6 +18,7 @@ const menuItems = [
   { name: "Overview", icon: BarChart3, href: "/overview" },
   { name: "Tanks", icon: Droplet, href: "/tanks" },
   { name: "Inventory", icon: Package, href: "/inventory" },
+  { name: "Predictions", icon: Package, href: "/predictions" },
   { name: "Reports", icon: FileText, href: "/reports" },
   { name: "Admin Settings", icon: Settings, href: "/admin" },
 ];

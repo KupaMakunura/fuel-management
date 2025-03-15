@@ -1,10 +1,9 @@
+import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from "@/providers";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import React from "react";
 import "./globals.css";
-import { AuthProvider } from "@/providers";
-import { Toaster } from "@/components/ui/toaster";
-import { ThemeProvider } from "next-themes";
 
 const inter = localFont({
   src: "../public/fonts/inter.ttf",

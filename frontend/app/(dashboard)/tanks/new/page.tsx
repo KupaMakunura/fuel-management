@@ -13,17 +13,15 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { API } from "@/services";
-import { useSession } from "next-auth/react";
 import { useState } from "react";
 
 export default function NewTankPage() {
   const [name, setName] = useState<string | null>(null);
   const [product, setProduct] = useState<string | null>(null);
-  const [depth, setDepth] = useState<any>(null);
-  const { data: session } = useSession();
+  const [capacity, setCapacity] = useState<any>(null);
 
   const handleCreateTank = async () => {
-    if (!depth || !product || !name) {
+    if (!capacity || !product || !name) {
       toast({
         title: "Missing Details",
         description: "Please enter all details to continue",
@@ -33,17 +31,15 @@ export default function NewTankPage() {
     } else {
       try {
         const response = await API.post(
-          "/tanks",
+          "/tanks/",
           {
             name,
             product,
-            depth,
+            capacity,
           },
           {
             headers: {
-              "Content-Type": "multipart/form-data",
-
-              Authorization: `Bearer ${session?.user.access_token}`,
+              "Content-Type": "application/json",
             },
           }
         );
@@ -113,13 +109,13 @@ export default function NewTankPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="depth">Depth</Label>
+          <Label htmlFor="capacity">Capacity</Label>
           <Input
-            id="depth"
+            id="capacity"
             type="number"
             step="0.01"
-            onChange={(event) => setDepth(event.target.value as any)}
-            placeholder="Enter depth"
+            onChange={(event) => setCapacity(event.target.value as any)}
+            placeholder="Enter capacity in liters"
           />
         </div>
       </div>
