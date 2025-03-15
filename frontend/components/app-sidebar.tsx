@@ -8,7 +8,14 @@ import {
   SidebarMenuItem,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-import { BarChart3, Droplet, FileText, Package, Settings } from "lucide-react";
+import {
+  BarChart3,
+  Droplet,
+  Package,
+  FileText,
+  Settings,
+  TrendingUp,
+} from "lucide-react";
 import Link from "next/link";
 import { Button } from "./ui/button";
 import { LogOut } from "lucide-react";
@@ -18,7 +25,7 @@ const menuItems = [
   { name: "Overview", icon: BarChart3, href: "/overview" },
   { name: "Tanks", icon: Droplet, href: "/tanks" },
   { name: "Inventory", icon: Package, href: "/inventory" },
-  { name: "Predictions", icon: Package, href: "/predictions" },
+  { name: "Predictions", icon: TrendingUp, href: "/predictions" },
   { name: "Reports", icon: FileText, href: "/reports" },
   { name: "Admin Settings", icon: Settings, href: "/admin" },
 ];

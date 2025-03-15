@@ -199,7 +199,9 @@ class UserViewSet(ModelViewSet):
 
         if user.check_password(old_password):
             if old_password == new_password:
-                response = {"repeat": True}
+                response = {
+                    "repeat": True,
+                }
 
                 return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
@@ -224,7 +226,9 @@ class UserViewSet(ModelViewSet):
 
         # old password is wrong
         else:
-            response = {"valid": False}
+            response = {
+                "valid": False,
+            }
 
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
@@ -239,7 +243,10 @@ class TankViewSet(ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            response = {"created": True, "data": serializer.data}
+            response = {
+                "created": True,
+                "data": serializer.data,
+            }
             return Response(response, status=status.HTTP_201_CREATED)
         else:
             response = {
@@ -254,7 +261,10 @@ class TankViewSet(ModelViewSet):
         serializer = self.get_serializer(instance, data=request.data)
         if serializer.is_valid():
             serializer.save()
-            response = {"updated": True, "data": serializer.data}
+            response = {
+                "updated": True,
+                "data": serializer.data,
+            }
             return Response(response, status=status.HTTP_200_OK)
         else:
             response = {
@@ -515,7 +525,7 @@ class InventoryViewSet(ModelViewSet):
                 try:
 
                     # Create inventory item
-                    inventory = Inventory.objects.create(
+                    Inventory.objects.create(
                         name=row["name"],
                         volume=row["volume"],
                         description=row.get("description", ""),
@@ -645,21 +655,24 @@ class InventoryViewSet(ModelViewSet):
             date = request.data["date"]
             formatted_date = pd.to_datetime(date)
 
-            # fetch the current inventory
+            predicted_price, current_price = predict_price(product, formatted_date)
 
-            inventory = Inventory.objects.filter(name=product)
+            if predicted_price:
 
-            price = predict_price(product, formatted_date)
-
-            if price:
-
-                response = {"predicted_price": price, "product": product, "date": date}
+                response = {
+                    "predicted_price": predicted_price,
+                    "current_price": current_price,
+                    "product": product,
+                    "date": date,
+                }
 
                 return Response(response, status=status.HTTP_200_OK)
 
             else:
 
-                response = {"predictions": False}
+                response = {
+                    "predictions": False,
+                }
 
                 return Response(response, status=status.HTTP_400_BAD_REQUEST)
 

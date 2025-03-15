@@ -1,5 +1,6 @@
 import joblib
 import pandas as pd
+from datetime import datetime
 
 
 def predict_price(product, date):
@@ -29,6 +30,10 @@ def predict_price(product, date):
     # Define features
     features = ["volume", "month", "day_of_week", "year", "days_since_start"]
 
-    # Make prediction
+    # Make prediction for the given date
     predicted_price = model.predict(input_data[features])
-    return predicted_price[0]
+
+    # Get current price from the latest entry in the dataset
+    current_price = data["price"].iloc[-1]
+
+    return predicted_price[0], current_price

@@ -10,6 +10,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function SignupPage() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -20,10 +21,10 @@ export default function SignupPage() {
   const handleSignUp = async () => {
     setIsLoading(true);
 
-    if (!email || !password || !confirmPassword) {
+    if (!name || !email || !password || !confirmPassword) {
       toast({
         title: "Missing Fields",
-        description: "Please enter email and password",
+        description: "Please enter all required fields",
         variant: "destructive",
         className: "bg-red-500 text-white",
       });
@@ -55,6 +56,7 @@ export default function SignupPage() {
 
     try {
       const response = await API.post("/users/", {
+        name,
         email,
         password,
       });
@@ -107,6 +109,20 @@ export default function SignupPage() {
         </div>
         <div className="mt-8 space-y-6 bg-white p-8 rounded-lg shadow">
           <div className="space-y-4">
+            <div>
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                name="name"
+                type="text"
+                autoComplete="name"
+                required
+                className="mt-1"
+                placeholder="Enter your full name"
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+
             <div>
               <Label htmlFor="email">Email address</Label>
               <Input

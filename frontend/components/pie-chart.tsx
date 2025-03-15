@@ -3,6 +3,7 @@
 import * as React from "react";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { Label, Pie, PieChart } from "recharts";
+import { API } from "@/services";
 
 import {
   Card,
@@ -19,56 +20,88 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 
-// This would typically come from an API or database query
-const chartData = [
-  { product: "ethanol", depth: 15.5, fill: "#3f37c9" },
-  { product: "diesel", depth: 22.3, fill: "#7209b7" },
-  { product: "petrol", depth: 18.7, fill: "#4895ef" },
-];
-
 const chartConfig = {
-  depth: {
-    label: "Depth",
+  volume: {
+    label: "Volume",
   },
-  ethanol: {
-    label: "Ethanol",
+  petrol: {
+    label: "Petrol",
     color: "#3f37c9",
   },
   diesel: {
     label: "Diesel",
-    color: "#2b9348",
+    color: "#7209b7",
   },
-  petrol: {
-    label: "Petrol",
-    color: "#d4d700",
+  ethanol: {
+    label: "Ethanol",
+    color: "#4895ef",
   },
 } satisfies ChartConfig;
 
 export function ProductDepthChart() {
-  const totalDepth = React.useMemo(() => {
-    return chartData.reduce((acc, curr) => acc + curr.depth, 0);
+  const [chartData, setChartData] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        const response = await API.get("/inventory");
+        const inventoryData = response.data;
+
+        // Process data for chart
+        const processedData = inventoryData.reduce((acc: any[], curr: any) => {
+          const existingProduct = acc.find(
+            (item) => item.product === curr.name
+          );
+          if (existingProduct) {
+            existingProduct.volume += curr.volume;
+          } else {
+            acc.push({
+              product: curr.name,
+              volume: curr.volume,
+              fill:
+                curr.name === "petrol"
+                  ? "#3f37c9"
+                  : curr.name === "diesel"
+                  ? "#7209b7"
+                  : "#4895ef",
+            });
+          }
+          return acc;
+        }, []);
+
+        setChartData(processedData);
+        setLoading(false);
+      } catch (error) {
+        console.error(error);
+        setLoading(false);
+      }
+    };
+
+    fetchInventory();
   }, []);
 
-  const averageDepth = totalDepth / chartData.length;
+  const totalVolume = React.useMemo(() => {
+    return chartData.reduce((acc, curr) => acc + curr.volume, 0);
+  }, [chartData]);
 
-  const trend =
-    averageDepth > 20
-      ? {
-          icon: <TrendingUp className="h-4 w-4" />,
-          text: "Trending up",
-          percentage: "3.2%",
-        }
-      : {
-          icon: <TrendingDown className="h-4 w-4" />,
-          text: "Trending down",
-          percentage: "2.1%",
-        };
+  const averageVolume = totalVolume / (chartData.length || 1);
+
+  const trend = {
+    icon: <TrendingUp className="h-4 w-4" />,
+    text: "Current Volume",
+    value: `${totalVolume.toLocaleString()} L`,
+  };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <Card className="flex flex-col w-full">
       <CardHeader className="items-center pb-0">
-        <CardTitle>Product Depth Distribution</CardTitle>
-        <CardDescription>Current Measurements</CardDescription>
+        <CardTitle>Product Volume Distribution</CardTitle>
+        <CardDescription>Current Inventory Levels</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 pb-0">
         <ChartContainer
@@ -82,7 +115,7 @@ export function ProductDepthChart() {
             />
             <Pie
               data={chartData}
-              dataKey="depth"
+              dataKey="volume"
               nameKey="product"
               innerRadius={60}
               strokeWidth={5}
@@ -102,14 +135,14 @@ export function ProductDepthChart() {
                           y={viewBox.cy}
                           className="fill-foreground text-3xl font-bold"
                         >
-                          {averageDepth.toFixed(1)}
+                          {Math.round(averageVolume).toLocaleString()}
                         </tspan>
                         <tspan
                           x={viewBox.cx}
                           y={(viewBox.cy || 0) + 24}
                           className="fill-muted-foreground"
                         >
-                          Avg Depth
+                          Avg Volume
                         </tspan>
                       </text>
                     );
@@ -122,10 +155,10 @@ export function ProductDepthChart() {
       </CardContent>
       <CardFooter className="flex-col gap-2 text-sm">
         <div className="flex items-center gap-2 font-medium leading-none">
-          {trend.text} by {trend.percentage} this period {trend.icon}
+          {trend.text}: {trend.value} {trend.icon}
         </div>
         <div className="leading-none text-muted-foreground">
-          Showing depth distribution across product types
+          Showing volume distribution across product types
         </div>
       </CardFooter>
     </Card>

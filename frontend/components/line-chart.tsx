@@ -24,37 +24,97 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-
-const chartData = [
-  { month: "January", ethanol: 186, diesel: 305, petrol: 280 },
-  { month: "February", ethanol: 305, diesel: 270, petrol: 310 },
-  { month: "March", ethanol: 237, diesel: 320, petrol: 290 },
-  { month: "April", ethanol: 273, diesel: 290, petrol: 350 },
-  { month: "May", ethanol: 209, diesel: 330, petrol: 370 },
-  { month: "June", ethanol: 214, diesel: 350, petrol: 400 },
-];
+import { useEffect, useState } from "react";
+import { API } from "@/services";
+import { toast } from "@/hooks/use-toast";
 
 const chartConfig = {
-  ethanol: {
-    label: "Ethanol",
-    color: "#3f37c9",
+  petrol: {
+    label: "Petrol",
+    color: "#d4d700",
   },
   diesel: {
     label: "Diesel",
     color: "#2b9348",
   },
-  petrol: {
-    label: "Petrol",
-    color: "#d4d700",
+  ethanol: {
+    label: "Ethanol",
+    color: "#3f37c9",
   },
 } satisfies ChartConfig;
 
 export function ProductLineChart() {
-  const latestMonth = chartData[chartData.length - 1];
-  const previousMonth = chartData[chartData.length - 2];
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const calculateTrend = (current: number, previous: number) => {
-    const percentageChange = ((current - previous) / previous) * 100;
+  useEffect(() => {
+    const fetchInventoryData = async () => {
+      try {
+        const response = await API.get("/inventory");
+        const inventory = response.data;
+
+        // Process inventory data to group by month and product
+        const monthlyData = inventory.reduce((acc: any, item: any) => {
+          const date = new Date(item.created_at);
+          const month = date.toLocaleString("default", { month: "long" });
+
+          if (!acc[month]) {
+            acc[month] = { month, petrol: 0, diesel: 0, ethanol: 0 };
+          }
+
+          acc[month][item.name.toLowerCase()] += item.volume;
+          return acc;
+        }, {});
+
+        // Convert to array and sort by month
+        const sortedData = Object.values(monthlyData).sort((a: any, b: any) => {
+          const months = [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+          ];
+          return months.indexOf(a.month) - months.indexOf(b.month);
+        });
+
+        setChartData(sortedData);
+        setLoading(false);
+      } catch (error) {
+        setLoading(false);
+        toast({
+          title: "Error",
+          description: "Failed to fetch inventory data",
+          variant: "destructive",
+          className: "bg-red-500 text-white",
+        });
+      }
+    };
+
+    fetchInventoryData();
+  }, []);
+
+  const calculateTrend = (product: string) => {
+    if (chartData.length < 2)
+      return { text: "No trend", percentage: "0", icon: null };
+
+    const latestMonth = chartData[chartData.length - 1];
+    const previousMonth = chartData[chartData.length - 2];
+
+    const current = latestMonth[product];
+    const previous = previousMonth[product];
+
+    const percentageChange = previous
+      ? ((current - previous) / previous) * 100
+      : 0;
+
     return {
       icon:
         percentageChange > 0 ? (
@@ -67,18 +127,26 @@ export function ProductLineChart() {
     };
   };
 
-  const ethanolTrend = calculateTrend(
-    latestMonth.ethanol,
-    previousMonth.ethanol
-  );
-  const dieselTrend = calculateTrend(latestMonth.diesel, previousMonth.diesel);
-  const petrolTrend = calculateTrend(latestMonth.petrol, previousMonth.petrol);
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Product Volume Trends</CardTitle>
-        <CardDescription>January - June 2024</CardDescription>
+        <CardDescription>Volume trends across months</CardDescription>
+        <div className="flex gap-4 mt-2">
+          {Object.entries(chartConfig).map(([key, config]) => (
+            <div key={key} className="flex items-center gap-2">
+              <div
+                className="w-3 h-3 rounded-full"
+                style={{ backgroundColor: config.color }}
+              />
+              <span className="text-sm">{config.label}</span>
+            </div>
+          ))}
+        </div>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[400px]">
@@ -103,47 +171,38 @@ export function ProductLineChart() {
               />
               <YAxis tickLine={false} axisLine={false} tickMargin={8} />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Line
-                type="monotone"
-                dataKey="ethanol"
-                stroke={chartConfig.ethanol.color}
-                strokeWidth={2}
-                dot={false}
-              />
-              <Line
-                type="monotone"
-                dataKey="diesel"
-                stroke={chartConfig.diesel.color}
-                strokeWidth={2}
-                dot={false}
-              />
-              <Line
-                type="monotone"
-                dataKey="petrol"
-                stroke={chartConfig.petrol.color}
-                strokeWidth={2}
-                dot={false}
-              />
+              {Object.keys(chartConfig).map((product) => (
+                <Line
+                  key={product}
+                  type="monotone"
+                  dataKey={product}
+                  stroke={
+                    chartConfig[product as keyof typeof chartConfig].color
+                  }
+                  strokeWidth={2}
+                  dot={false}
+                />
+              ))}
             </LineChart>
           </ResponsiveContainer>
         </ChartContainer>
       </CardContent>
       <CardFooter>
         <div className="grid w-full gap-2 text-sm">
-          <div className="flex items-center gap-2 font-medium leading-none">
-            Ethanol: {ethanolTrend.text} by {ethanolTrend.percentage}{" "}
-            {ethanolTrend.icon}
-          </div>
-          <div className="flex items-center gap-2 font-medium leading-none">
-            Diesel: {dieselTrend.text} by {dieselTrend.percentage}{" "}
-            {dieselTrend.icon}
-          </div>
-          <div className="flex items-center gap-2 font-medium leading-none">
-            Petrol: {petrolTrend.text} by {petrolTrend.percentage}{" "}
-            {petrolTrend.icon}
-          </div>
+          {Object.keys(chartConfig).map((product) => {
+            const trend = calculateTrend(product);
+            return (
+              <div
+                key={product}
+                className="flex items-center gap-2 font-medium leading-none"
+              >
+                {chartConfig[product as keyof typeof chartConfig].label}:{" "}
+                {trend.text} by {trend.percentage} {trend.icon}
+              </div>
+            );
+          })}
           <div className="flex items-center gap-2 leading-none text-muted-foreground">
-            Showing product volumes for the last 6 months
+            Showing product volumes across all recorded months
           </div>
         </div>
       </CardFooter>
