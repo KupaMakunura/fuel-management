@@ -1,5 +1,8 @@
 import json
 import random
+
+# Gmail SMTP setup
+import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -38,32 +41,38 @@ def send_verification_code(email):
 
         # Generate a random 6-digit verification code
         verification_code = random.randint(100000, 999999)
+        print(verification_code)
 
         # Create or update two factor instance
         UserTwoFactor.objects.create(user=user, verification_code=verification_code)
 
-        url = "https://api.mailersend.com/v1/email"
-        headers = {
-            "Content-Type": "application/json",
-            "X-Requested-With": "XMLHttpRequest",
-            "Authorization": f"Bearer mlsn.7f65e08654e5d705787b790209d269f378ca486213a9bc8899d308038689d9cd",
-        }
+        sender_email = "chinguwacliveria@gmail.com"
+        sender_password = "oiwrnwwubarsusfw"
 
-        payload = {
-            "from": {"email": "MS_8ctrUU@trial-vywj2lp896jg7oqz.mlsender.net"},
-            "to": [{"email": email}],
-            "subject": "Email Verification Code",
-            "text": f"Your verification code is: {verification_code}",
-            "html": f"Your verification code is: {verification_code}",
-        }
+        message = MIMEMultipart("alternative")
+        message["Subject"] = "Email Verification Code"
+        message["From"] = sender_email
+        message["To"] = email
 
-        response = requests.post(url, headers=headers, data=json.dumps(payload))
+        text = f"Your verification code is: {verification_code}"
+        html = f"Your verification code is: {verification_code}"
 
-        if response.status_code == 202:
-            return verification_code
-        else:
-            print(f"Error sending email: {response.text}")
-            return None
+        part1 = MIMEText(text, "plain")
+        part2 = MIMEText(html, "html")
+
+        message.attach(part1)
+        message.attach(part2)
+
+        # Create SMTP session
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(sender_email, sender_password)
+
+        # Send email
+        server.send_message(message)
+        server.quit()
+
+        return verification_code
 
     except User.DoesNotExist:
         print("User not found")

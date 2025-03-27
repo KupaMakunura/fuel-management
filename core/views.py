@@ -154,7 +154,9 @@ class UserViewSet(ModelViewSet):
             return Response(response, status=status.HTTP_200_OK)
 
         except User.DoesNotExist:
-            response = {"found": False}
+            response = {
+                "found": False,
+            }
 
             return Response(response, status=status.HTTP_404_NOT_FOUND)
 
