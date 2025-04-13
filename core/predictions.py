@@ -4,12 +4,11 @@ from datetime import datetime
 
 
 def predict_price(product, date):
+    # Load the combined model
+    model = joblib.load("models/fuel_price_model.joblib")
 
+    # Read data for current price
     data = pd.read_csv(f"datasets/{product}.csv")
-    # Load the saved model
-    model = joblib.load(f"models/{product}_price_model.joblib")
-
-    # convert the date to a datetime object
     data["created_at"] = pd.to_datetime(data["created_at"])
 
     # Prepare input data for the selected date
@@ -23,12 +22,25 @@ def predict_price(product, date):
         input_data["created_at"] - data["created_at"].min()
     ).dt.days
 
-    # Add other features (e.g., volume)
-    # For simplicity, assume constant volume or use a forecast for volume
+    # Add volume feature
     input_data["volume"] = 1000  # Example: Assume constant volume
 
-    # Define features
-    features = ["volume", "month", "day_of_week", "year", "days_since_start"]
+    # Add fuel type dummy variables
+    input_data["fuel_type_ethanol"] = 1 if product == "ethanol" else 0
+    input_data["fuel_type_petrol"] = 1 if product == "petrol" else 0
+    input_data["fuel_type_diesel"] = 1 if product == "diesel" else 0
+
+    # Define features in same order as training
+    features = [
+        "volume",
+        "month",
+        "day_of_week",
+        "year",
+        "days_since_start",
+        "fuel_type_ethanol",
+        "fuel_type_petrol",
+        "fuel_type_diesel",
+    ]
 
     # Make prediction for the given date
     predicted_price = model.predict(input_data[features])

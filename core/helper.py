@@ -1,4 +1,3 @@
-import json
 import random
 
 # Gmail SMTP setup
@@ -6,7 +5,6 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-import requests
 from django.contrib.auth.hashers import make_password
 from rest_framework_simplejwt.tokens import RefreshToken
 
