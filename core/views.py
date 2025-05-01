@@ -1,31 +1,30 @@
 import io
-from datetime import datetime
 import os
+from datetime import datetime
 
 import pandas as pd
-from django.db.models import Sum, Count
-from django.http import FileResponse
 from django.conf import settings
+from django.db.models import Count, Sum
+from django.http import FileResponse
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 from rest_framework import status
 from rest_framework.decorators import action as restful_action
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.permissions import AllowAny
 
-from core.helper import hash_password, generate_tokens, send_verification_code
-from core.models import Report, User, Inventory, Tank, UserTwoFactor
+from core.helper import generate_tokens, hash_password, send_verification_code
+from core.models import Inventory, Report, Tank, User, UserTwoFactor
 from core.predictions import predict_price
 from core.serializers import (
-    ReportSerializer,
-    UserSerializer,
     InventorySerializer,
+    ReportSerializer,
     TankSerializer,
+    UserSerializer,
 )
-
 
 # Create your models here.
 
